@@ -1,0 +1,19 @@
+# Dependencies
+node_modules/
+client/node_modules/
+server/node_modules/
+
+# Builds
+client/dist/
+server/dist/
+.vercel/
+data/bookings.xlsx
+
+# Env
+.env
+.env.*
+!.env.example
+
+# OS / editor
+.DS_Store
+*.log

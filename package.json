@@ -1,0 +1,27 @@
+{
+  "name": "rantha-dash",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "dev:client": "cd client && node node_modules/vite/bin/vite.js",
+    "dev:server": "cd server && node node_modules/tsx/dist/cli.mjs watch src/index.ts",
+    "build": "npm run build:client && npm run build:server",
+    "build:client": "cd client && npm run build",
+    "build:server": "cd server && npm run build",
+    "sync:excel": "mkdir -p data && cp \"booking chart 2026-27.xlsx\" data/bookings.xlsx",
+    "install:all": "npm install && npm install --prefix client && npm install --prefix server"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.10.5",
+    "typescript": "^5.7.3"
+  }
+}
