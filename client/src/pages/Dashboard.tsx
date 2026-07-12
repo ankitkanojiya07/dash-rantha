@@ -26,9 +26,16 @@ export function DashboardPage() {
   const queryClient = useQueryClient();
   const [occupiedDate, setOccupiedDate] = useState(() => format(new Date(), 'yyyy-MM-dd'));
 
-  const { data: kpis, isLoading: kpisLoading } = useQuery({
+  const {
+    data: kpis,
+    isLoading: kpisLoading,
+    isError: kpisError,
+    error: kpisErrorDetail,
+    refetch: refetchKpis,
+  } = useQuery({
     queryKey: ['kpis'],
     queryFn: api.getKPIs,
+    retry: 2,
   });
 
   const { data: occupancy } = useQuery({
@@ -56,11 +63,25 @@ export function DashboardPage() {
     },
   });
 
-  if (kpisLoading || !kpis) {
+  if (kpisLoading) {
     return (
       <div className="loading">
         <div className="spinner" />
         Loading dashboard...
+      </div>
+    );
+  }
+
+  if (kpisError || !kpis) {
+    return (
+      <div className="loading">
+        <p>Could not load dashboard data.</p>
+        <p className="page-subtitle" style={{ marginTop: 8 }}>
+          {kpisErrorDetail instanceof Error ? kpisErrorDetail.message : 'API request failed'}
+        </p>
+        <button type="button" className="btn btn-primary" style={{ marginTop: 16 }} onClick={() => refetchKpis()}>
+          Retry
+        </button>
       </div>
     );
   }
