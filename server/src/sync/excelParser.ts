@@ -1,36 +1,5 @@
-import fs from 'fs';
 import XLSX from 'xlsx';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import type { Booking, DailyOccupancy, SyncLog, SyncMismatch } from '../types.js';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const EXCEL_CANDIDATES = [
-  'data/bookings.xlsx',
-  'booking chart 2026-27.xlsx',
-] as const;
-
-function resolveExcelPath(): string {
-  if (process.env.BOOKING_EXCEL_PATH) return process.env.BOOKING_EXCEL_PATH;
-
-  const candidates = [
-    ...EXCEL_CANDIDATES.map((rel) => path.resolve(process.cwd(), rel)),
-    path.resolve(__dirname, '../../../data/bookings.xlsx'),
-    path.resolve(__dirname, '../../../booking chart 2026-27.xlsx'),
-    path.resolve(__dirname, '../../data/bookings.xlsx'),
-    path.resolve(__dirname, '../../booking chart 2026-27.xlsx'),
-  ];
-
-  for (const candidate of candidates) {
-    if (fs.existsSync(candidate)) return candidate;
-  }
-
-  return candidates[0];
-}
-
-export function getExcelFilePath(): string {
-  return resolveExcelPath();
-}
 
 const MONTH_SHEETS = [
   'Sep',
@@ -256,14 +225,7 @@ function inferTotalRooms(workbook: XLSX.WorkBook): number {
   return maxTotal > 0 ? maxTotal : 83;
 }
 
-export function parseBookingExcel(filePath = getExcelFilePath()): ParsedData {
-  if (!fs.existsSync(filePath)) {
-    throw new Error(
-      `Booking Excel not found at "${filePath}". Set BOOKING_EXCEL_PATH or place data/bookings.xlsx in the project root.`,
-    );
-  }
-
-  const workbook = XLSX.readFile(filePath);
+export function parseBookingWorkbook(workbook: XLSX.WorkBook): ParsedData {
   const syncedAt = new Date().toISOString();
   const refCounters = new Map<string, number>();
 
@@ -298,6 +260,7 @@ export function parseBookingExcel(filePath = getExcelFilePath()): ParsedData {
     rowsProcessed: uniqueBookings.length,
     mismatches: allMismatches,
     status: allMismatches.length > 0 ? 'warning' : 'success',
+    source: 'google',
   };
 
   return {
@@ -306,4 +269,9 @@ export function parseBookingExcel(filePath = getExcelFilePath()): ParsedData {
     syncLog,
     totalRooms,
   };
+}
+
+export function parseBookingExcelBuffer(buffer: Buffer): ParsedData {
+  const workbook = XLSX.read(buffer, { type: 'buffer' });
+  return parseBookingWorkbook(workbook);
 }

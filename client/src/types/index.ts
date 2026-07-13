@@ -44,6 +44,7 @@ export interface SyncLog {
   rowsProcessed: number;
   mismatches: SyncMismatch[];
   status: 'success' | 'warning' | 'error';
+  source?: 'google';
 }
 
 export interface DashboardKPIs {

@@ -5,8 +5,25 @@ Read-only hotel booking dashboard built from the spec in `doc.md`.
 ## Stack
 
 - **Frontend:** React + TypeScript + TanStack (Router, Table, Query) + Recharts
-- **Backend:** Express read-only API (Excel → in-memory store)
+- **Backend:** Express read-only API (Google Sheets → in-memory store)
 - **Deploy:** Vercel (static client + serverless `/api`)
+
+## Data source (Google Drive)
+
+Live bookings come only from the shared Google Sheet (view access is enough):
+
+`https://docs.google.com/spreadsheets/d/1hI1iarIdg9U0Qiy7RBwhIG6IiArv8PTz/edit?usp=sharing`
+
+On startup and when you click **Trigger Sync**, the server downloads the latest `.xlsx` export and reloads bookings. There is no local Excel file in the repo.
+
+Optional env vars:
+
+| Variable | Purpose |
+|---|---|
+| `BOOKING_GOOGLE_SHEETS_ID` | Spreadsheet ID (default: the shared chart above) |
+| `BOOKING_GOOGLE_SHEETS_URL` | Full Sheets URL (ID is parsed from it) |
+
+Keep the Google file shared as **Anyone with the link can view**.
 
 ## Quick Start
 
@@ -23,9 +40,7 @@ npm run dev
 1. Push this repo to GitHub/GitLab/Bitbucket.
 2. Import the project in [Vercel](https://vercel.com/new) — root directory stays the repo root (do not set Root Directory to `client`).
 3. Vercel will use `vercel.json` (`install:all`, build client, serverless `api/`).
-4. Deploy. The booking Excel file at the project root is bundled into the API function.
-
-Optional: set `BOOKING_EXCEL_PATH` if you host the workbook elsewhere.
+4. Deploy. Data is always pulled live from Google Sheets.
 
 Local preview of the production build:
 
@@ -52,10 +67,3 @@ npx vercel dev
 - Background: `#332928`
 - Sidebar: `#f1f5f9`
 - Accent: `#c9a227`
-
-## Next Steps (from doc.md)
-
-1. Connect PostgreSQL and run `database/schema.sql`
-2. Build Excel sync parser for `booking_chart_2026-27.xlsx`
-3. Wire OneDrive/Google Drive sync
-4. Confirm status column meaning & accent color preference

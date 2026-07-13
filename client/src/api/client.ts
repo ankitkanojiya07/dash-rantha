@@ -43,5 +43,8 @@ export const api = {
   getMonthlyReport: () => fetchJson<MonthlyReport[]>('/reports/monthly'),
   getSyncLog: () => fetchJson<SyncLog>('/sync'),
   refreshSync: () =>
-    fetchJson<{ message: string; syncedAt: string }>('/sync/refresh', { method: 'POST' }),
+    fetchJson<{ message: string; syncedAt: string; source?: string; rowsProcessed?: number }>(
+      '/sync/refresh',
+      { method: 'POST' },
+    ),
 };

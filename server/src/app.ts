@@ -1,22 +1,19 @@
 import express from 'express';
 import cors from 'cors';
 import apiRouter from './routes/api.js';
-import { getBookingStore } from './data/bookingStore.js';
+import { ensureBookingStore } from './data/bookingStore.js';
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
-// Lazy-load Excel store on first request (survives Vercel cold starts cleanly)
+// Lazy-load booking store on first request (Google Sheets)
 app.use((req, _res, next) => {
   if (req.path === '/health') return next();
-  try {
-    getBookingStore();
-    next();
-  } catch (err) {
-    next(err);
-  }
+  ensureBookingStore()
+    .then(() => next())
+    .catch((err) => next(err));
 });
 
 // Local Vite proxy hits /api/*; Vercel rewrite may pass paths with or without /api

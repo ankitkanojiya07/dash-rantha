@@ -279,9 +279,18 @@ router.get('/sync', (_req, res) => {
   res.json(getBookingStore().syncLog);
 });
 
-router.post('/sync/refresh', (_req, res) => {
-  const store = refreshBookingStore();
-  res.json({ message: 'Sync complete', syncedAt: store.syncLog.syncedAt });
+router.post('/sync/refresh', async (_req, res, next) => {
+  try {
+    const store = await refreshBookingStore();
+    res.json({
+      message: 'Sync complete',
+      syncedAt: store.syncLog.syncedAt,
+      source: store.syncLog.source,
+      rowsProcessed: store.syncLog.rowsProcessed,
+    });
+  } catch (err) {
+    next(err);
+  }
 });
 
 export default router;

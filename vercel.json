@@ -1,7 +1,7 @@
 {
   "version": 2,
   "installCommand": "npm run install:all",
-  "buildCommand": "npm run sync:excel && npm run build:server && npm run build:client",
+  "buildCommand": "npm run build:server && npm run build:client",
   "outputDirectory": "client/dist",
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api" },
@@ -11,7 +11,7 @@
     "api/index.ts": {
       "memory": 1024,
       "maxDuration": 60,
-      "includeFiles": "{data/bookings.xlsx,server/dist/**}"
+      "includeFiles": "{server/dist/**}"
     }
   }
 }

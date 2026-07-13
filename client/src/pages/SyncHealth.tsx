@@ -78,6 +78,7 @@ export function SyncHealthPage() {
           <span>
             Last synced: {format(parseISO(syncLog.syncedAt), 'dd MMM yyyy, HH:mm')} (
             {formatDistanceToNow(parseISO(syncLog.syncedAt), { addSuffix: true })})
+            {syncLog.source ? <> · Source: Google Drive (live link)</> : null}
           </span>
           <button
             className="btn btn-primary btn-sm"
@@ -97,8 +98,8 @@ export function SyncHealthPage() {
             TOTAL Row Mismatches
           </div>
           <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
-            These dates had a mismatch between the Excel TOTAL row and the sum of individual booking room counts.
-            Fix these in your Excel file and re-sync.
+            These dates had a mismatch between the sheet TOTAL row and the sum of individual booking room counts.
+            Fix these in the shared Google Sheet / Excel and re-sync.
           </p>
           <div className="table-wrap">
             <table className="data-table">

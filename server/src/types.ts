@@ -42,6 +42,8 @@ export interface SyncLog {
   rowsProcessed: number;
   mismatches: SyncMismatch[];
   status: 'success' | 'warning' | 'error';
+  /** Always Google Drive for this dashboard. */
+  source: 'google';
 }
 
 export interface DashboardKPIs {

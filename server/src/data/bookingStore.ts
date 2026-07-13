@@ -1,5 +1,6 @@
 import type { Agent, Booking, DailyOccupancy, SyncLog } from '../types.js';
-import { parseBookingExcel } from '../sync/excelParser.js';
+import { parseBookingExcelBuffer } from '../sync/excelParser.js';
+import { downloadGoogleSheetXlsx, getGoogleSheetsId } from '../sync/googleSheets.js';
 import { buildAgentCanonicalMap, canonicalizeAgentName } from '../utils/agentName.js';
 
 function getRoomNights(b: Booking) {
@@ -45,31 +46,66 @@ export interface BookingStore {
 }
 
 let store: BookingStore | null = null;
+let loadPromise: Promise<BookingStore> | null = null;
 
-export function loadBookingStore(): BookingStore {
-  const parsed = parseBookingExcel();
+function buildStore(parsed: {
+  bookings: Booking[];
+  dailyOccupancy: DailyOccupancy[];
+  syncLog: SyncLog;
+  totalRooms: number;
+}): BookingStore {
   const bookings = applyCanonicalAgentNames(parsed.bookings);
-
-  store = {
+  return {
     bookings,
     dailyOccupancy: parsed.dailyOccupancy,
     agents: buildAgents(bookings),
     syncLog: parsed.syncLog,
     totalRooms: parsed.totalRooms,
   };
+}
 
+async function loadFromGoogle(): Promise<BookingStore> {
+  const sheetId = getGoogleSheetsId();
+  const buffer = await downloadGoogleSheetXlsx(sheetId);
+  const parsed = parseBookingExcelBuffer(buffer);
+  const next = buildStore(parsed);
   console.log(
-    `Loaded ${store.bookings.length} bookings from Excel (${store.syncLog.sheetsProcessed} sheets, ${store.syncLog.mismatches.length} mismatches)`,
+    `Loaded ${next.bookings.length} bookings from Google Sheets (${sheetId}) — ${next.syncLog.sheetsProcessed} sheets, ${next.syncLog.mismatches.length} mismatches`,
   );
-
-  return store;
+  return next;
 }
 
+export async function ensureBookingStore(): Promise<BookingStore> {
+  if (store) return store;
+  if (!loadPromise) {
+    loadPromise = loadFromGoogle()
+      .then((next) => {
+        store = next;
+        return next;
+      })
+      .finally(() => {
+        loadPromise = null;
+      });
+  }
+  return loadPromise;
+}
+
+/** Sync accessor — store must already be loaded via ensureBookingStore(). */
 export function getBookingStore(): BookingStore {
-  if (!store) return loadBookingStore();
+  if (!store) {
+    throw new Error('Booking store not loaded yet. Call ensureBookingStore() first.');
+  }
   return store;
 }
 
-export function refreshBookingStore(): BookingStore {
-  return loadBookingStore();
+export async function refreshBookingStore(): Promise<BookingStore> {
+  loadPromise = loadFromGoogle()
+    .then((next) => {
+      store = next;
+      return next;
+    })
+    .finally(() => {
+      loadPromise = null;
+    });
+  return loadPromise;
 }
