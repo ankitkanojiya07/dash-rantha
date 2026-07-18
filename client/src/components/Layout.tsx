@@ -1,4 +1,4 @@
-import { useState, type ComponentType } from 'react';
+import { useEffect, useState, type ComponentType } from 'react';
 import { Link, useRouterState } from '@tanstack/react-router';
 import type { IconProps } from '@solar-icons/react';
 import {
@@ -11,9 +11,12 @@ import {
   AltArrowLeft,
   AltArrowRight,
   Buildings,
+  HamburgerMenu,
+  CloseSquare,
 } from '@solar-icons/react';
 
 const ICON = { weight: 'BoldDuotone' as const };
+const MOBILE_MQ = '(max-width: 768px)';
 
 const NAV_ITEMS: { to: string; label: string; icon: ComponentType<IconProps> }[] = [
   { to: '/', label: 'Dashboard', icon: Widget },
@@ -31,23 +34,80 @@ interface SidebarProps {
 
 export function AppLayout({ children }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+
+  useEffect(() => {
+    const mq = window.matchMedia(MOBILE_MQ);
+    const update = () => {
+      setIsMobile(mq.matches);
+      if (mq.matches) setMobileOpen(false);
+    };
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
+
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMobileOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = '';
+    };
+  }, [mobileOpen]);
+
+  const sidebarClass = [
+    'sidebar',
+    !isMobile && collapsed ? 'collapsed' : '',
+    isMobile && mobileOpen ? 'mobile-open' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   return (
     <div className="app-layout">
-      <aside className={`sidebar ${collapsed ? 'collapsed' : ''}`}>
+      {isMobile && mobileOpen && (
+        <button
+          type="button"
+          className="sidebar-backdrop"
+          aria-label="Close menu"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
+      <aside className={sidebarClass}>
+        <button
+          className="collapse-btn"
+          onClick={() => {
+            if (isMobile) setMobileOpen(false);
+            else setCollapsed(!collapsed);
+          }}
+          aria-label={isMobile ? 'Close menu' : 'Toggle sidebar'}
+        >
+          {isMobile ? (
+            <CloseSquare size={18} {...ICON} />
+          ) : collapsed ? (
+            <AltArrowRight size={18} {...ICON} />
+          ) : (
+            <AltArrowLeft size={18} {...ICON} />
+          )}
+        </button>
+
         <div className="sidebar-header">
           <div className="sidebar-logo">
             <Buildings size={20} {...ICON} />
           </div>
           <span className="sidebar-title">Regency Hotel</span>
-          <button
-            className="collapse-btn"
-            onClick={() => setCollapsed(!collapsed)}
-            aria-label="Toggle sidebar"
-          >
-            {collapsed ? <AltArrowRight size={18} {...ICON} /> : <AltArrowLeft size={18} {...ICON} />}
-          </button>
         </div>
 
         <nav className="sidebar-nav">
@@ -56,6 +116,9 @@ export function AppLayout({ children }: SidebarProps) {
               key={to}
               to={to}
               className={`nav-item ${pathname === to ? 'active' : ''}`}
+              onClick={() => {
+                if (isMobile) setMobileOpen(false);
+              }}
             >
               <Icon size={20} {...ICON} />
               <span className="nav-label">{label}</span>
@@ -64,7 +127,19 @@ export function AppLayout({ children }: SidebarProps) {
         </nav>
       </aside>
 
-      <main className="main-content">{children}</main>
+      <main className="main-content">
+        {isMobile && (
+          <button
+            type="button"
+            className="mobile-menu-btn"
+            onClick={() => setMobileOpen(true)}
+            aria-label="Open menu"
+          >
+            <HamburgerMenu size={20} {...ICON} />
+          </button>
+        )}
+        {children}
+      </main>
     </div>
   );
 }
