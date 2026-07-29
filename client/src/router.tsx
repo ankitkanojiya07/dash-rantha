@@ -12,6 +12,7 @@ import { AgentsPage } from './pages/Agents';
 import { ReportsPage } from './pages/Reports';
 import { GuestsPage } from './pages/Guests';
 import { SyncHealthPage } from './pages/SyncHealth';
+import { SendMailPage } from './pages/SendMail';
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -63,11 +64,18 @@ const syncRoute = createRoute({
   component: SyncHealthPage,
 });
 
+const sendMailRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/send-mail',
+  component: SendMailPage,
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   calendarRoute,
   bookingsRoute,
   agentsRoute,
+  sendMailRoute,
   reportsRoute,
   guestsRoute,
   syncRoute,

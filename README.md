@@ -60,6 +60,7 @@ npx vercel dev
 | `/agents` | Agent leaderboard & room-night tracking |
 | `/reports` | Monthly analytics with breakdowns |
 | `/guests` | Guest/group repeat-stay history |
+| `/send-mail` | Email booking CSVs to top agents |
 | `/sync` | Data health & sync integrity panel |
 
 ## Theme
@@ -67,3 +68,19 @@ npx vercel dev
 - Background: `#332928`
 - Sidebar: `#f1f5f9`
 - Accent: `#c9a227`
+
+## Send Mail (nodemailer)
+
+Emails are sent from `ranthambhoreregency@gmail.com` via Gmail SMTP.
+
+1. Create a [Gmail App Password](https://myaccount.google.com/apppasswords) for that account.
+2. Set env vars (server process / Vercel):
+
+| Variable | Purpose |
+|---|---|
+| `MAIL_PASS` | Gmail App Password (required) |
+| `MAIL_USER` | Defaults to `ranthambhoreregency@gmail.com` |
+| `MAIL_FROM` | Defaults to `ranthambhoreregency@gmail.com` |
+| `AGENT_EMAILS_JSON` | Optional JSON map of agent → email, e.g. `{"Sita":"sita@agency.com"}` |
+
+3. Or fill emails in `server/src/config/agentEmails.ts`. You can also type the recipient in the Send Mail popup.

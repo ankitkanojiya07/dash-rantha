@@ -1,8 +1,10 @@
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import dotenv from 'dotenv';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+dotenv.config({ path: path.join(root, '.env') });
 
 function start(name, cwd, command, args) {
   const child = spawn(command, args, {

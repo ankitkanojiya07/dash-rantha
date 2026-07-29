@@ -1014,3 +1014,100 @@ input, select {
   background: var(--accent-muted);
   color: var(--accent);
 }
+
+.mail-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(440px, calc(100vw - 2rem));
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 2rem;
+  z-index: 100;
+  box-shadow: var(--shadow);
+}
+
+.mail-modal h3 {
+  font-family: var(--font-serif);
+  font-size: 1.5rem;
+  color: var(--accent);
+  margin-bottom: 0.15rem;
+}
+
+.mail-modal-agent {
+  color: var(--text-primary);
+  font-weight: 500;
+  margin-bottom: 1.25rem;
+}
+
+.mail-modal-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.mail-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.mail-field span {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.mail-field .filter-input {
+  width: 100%;
+  min-width: 0;
+}
+
+.mail-field-full {
+  grid-column: 1 / -1;
+}
+
+.mail-modal-hint {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+  margin-bottom: 1rem;
+}
+
+.mail-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.mail-status {
+  font-size: 0.85rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: var(--radius-sm);
+  margin-bottom: 0.75rem;
+}
+
+.mail-status-ok {
+  background: rgba(74, 222, 128, 0.15);
+  color: var(--success);
+}
+
+.mail-status-err {
+  background: rgba(248, 113, 113, 0.15);
+  color: var(--danger);
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@media (max-width: 480px) {
+  .mail-modal-fields {
+    grid-template-columns: 1fr;
+  }
+}

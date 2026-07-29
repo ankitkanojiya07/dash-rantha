@@ -2,6 +2,8 @@ import { Router } from 'express';
 import { getBookingStore, refreshBookingStore } from '../data/bookingStore.js';
 import type { Booking, BookingOverlap, DashboardKPIs } from '../types.js';
 import { countRoomsByType } from '../utils/roomType.js';
+import { getAgentEmail } from '../config/agentEmails.js';
+import { bookingsToCsv, sendBookingsCsvMail } from '../services/mailService.js';
 
 const router = Router();
 
@@ -164,6 +166,73 @@ router.get('/agents/leaderboard', (_req, res) => {
     shareOfBusiness: totalRN > 0 ? Math.round((a.totalRoomNights / totalRN) * 1000) / 10 : 0,
   }));
   res.json(leaderboard);
+});
+
+/** Top N agents with configured recipient emails (for Send Mail page). */
+router.get('/agents/top', (req, res) => {
+  const limit = Math.min(parseInt(String(req.query.limit || '5'), 10) || 5, 50);
+  const { agents } = getBookingStore();
+  const totalRN = agents.reduce((s, a) => s + a.totalRoomNights, 0);
+  const top = agents.slice(0, limit).map((a, i) => ({
+    ...a,
+    rank: i + 1,
+    shareOfBusiness: totalRN > 0 ? Math.round((a.totalRoomNights / totalRN) * 1000) / 10 : 0,
+    email: getAgentEmail(a.agentName),
+  }));
+  res.json(top);
+});
+
+/**
+ * Send agent booking CSV for a date range via nodemailer (Gmail).
+ * Body: { agentName, from, to, email? }
+ * `email` overrides the configured agent email when provided.
+ */
+router.post('/agents/send-mail', async (req, res, next) => {
+  try {
+    const agentName = String(req.body?.agentName || '').trim();
+    const from = String(req.body?.from || '').trim();
+    const to = String(req.body?.to || '').trim();
+    const emailOverride = String(req.body?.email || '').trim();
+
+    if (!agentName) return res.status(400).json({ error: 'agentName is required' });
+    if (!from || !to) return res.status(400).json({ error: 'from and to dates are required (YYYY-MM-DD)' });
+    if (from > to) return res.status(400).json({ error: 'from date must be on or before to date' });
+
+    const recipient = emailOverride || getAgentEmail(agentName);
+    if (!recipient) {
+      return res.status(400).json({
+        error: `No email configured for agent "${agentName}". Add it in server/src/config/agentEmails.ts or pass email in the request.`,
+      });
+    }
+
+    const { bookings } = getBookingStore();
+    const filtered = bookings
+      .filter((b) => b.agentName === agentName && b.arrivalDate >= from && b.arrivalDate <= to)
+      .sort((a, b) => a.arrivalDate.localeCompare(b.arrivalDate));
+
+    if (!filtered.length) {
+      return res.status(404).json({
+        error: `No bookings found for ${agentName} between ${from} and ${to}`,
+      });
+    }
+
+    const csv = bookingsToCsv(filtered);
+    const result = await sendBookingsCsvMail({
+      to: recipient,
+      agentName,
+      fromDate: from,
+      toDate: to,
+      csv,
+      bookingCount: filtered.length,
+    });
+
+    res.json({
+      message: 'Mail sent successfully',
+      ...result,
+    });
+  } catch (err) {
+    next(err);
+  }
 });
 
 router.get('/calendar', (req, res) => {
