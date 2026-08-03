@@ -12,7 +12,7 @@ Read-only hotel booking dashboard built from the spec in `doc.md`.
 
 Live bookings come only from the shared Google Sheet (view access is enough):
 
-`https://docs.google.com/spreadsheets/d/1hI1iarIdg9U0Qiy7RBwhIG6IiArv8PTz/edit?usp=sharing`
+`https://docs.google.com/spreadsheets/d/1JGg12SH04DapY-HGaVia95sOp_3pYztc/edit?usp=sharing`
 
 On startup and when you click **Trigger Sync**, the server downloads the latest `.xlsx` export and reloads bookings. There is no local Excel file in the repo.
 
