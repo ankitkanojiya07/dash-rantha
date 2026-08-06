@@ -1,5 +1,5 @@
 /** Default shared booking chart (view access). Override with BOOKING_GOOGLE_SHEETS_ID. */
-export const DEFAULT_GOOGLE_SHEETS_ID = '1JGg12SH04DapY-HGaVia95sOp_3pYztc';
+export const DEFAULT_GOOGLE_SHEETS_ID = '13SZlTcgHOrZuD7L9EnSnjADz-3dRbT6C-99Lrz9w6EM';
 
 export function getGoogleSheetsId(): string {
   const fromEnv = process.env.BOOKING_GOOGLE_SHEETS_ID?.trim();
