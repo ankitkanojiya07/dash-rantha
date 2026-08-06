@@ -29,6 +29,19 @@ export interface DailyOccupancy {
   roomsOccupied: number;
 }
 
+export interface RoomTypeCount {
+  type: string;
+  rooms: number;
+  bookings: number;
+}
+
+/** Per-day room breakdown taken from the sheet day-block (matches Excel TOTAL). */
+export interface DailyRoomsByType {
+  date: string;
+  totalRooms: number;
+  byType: RoomTypeCount[];
+}
+
 export interface SyncMismatch {
   date: string;
   expectedTotal: number;

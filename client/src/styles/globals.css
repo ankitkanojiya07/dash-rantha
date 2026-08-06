@@ -593,6 +593,18 @@ input, select {
   border-color: var(--accent);
 }
 
+.filter-date {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.filter-date .filter-input {
+  min-width: 10.5rem;
+}
+
 .badge {
   display: inline-block;
   padding: 0.2rem 0.6rem;
@@ -1020,43 +1032,54 @@ input, select {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: min(440px, calc(100vw - 2rem));
+  width: min(720px, calc(100vw - 2rem));
+  max-height: min(90vh, 860px);
+  display: flex;
+  flex-direction: column;
   background: var(--bg-secondary);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 2rem;
+  padding: 2rem 2.25rem;
   z-index: 100;
   box-shadow: var(--shadow);
+  overflow: hidden;
 }
 
 .mail-modal h3 {
   font-family: var(--font-serif);
-  font-size: 1.5rem;
+  font-size: 1.75rem;
   color: var(--accent);
-  margin-bottom: 0.15rem;
+  margin-bottom: 0.2rem;
+  flex-shrink: 0;
 }
 
 .mail-modal-agent {
   color: var(--text-primary);
   font-weight: 500;
-  margin-bottom: 1.25rem;
+  font-size: 1.05rem;
+  margin-bottom: 1.5rem;
+  flex-shrink: 0;
 }
 
 .mail-modal-fields {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 0.85rem;
+  gap: 1rem 1.25rem;
   margin-bottom: 1rem;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  padding-right: 0.15rem;
 }
 
 .mail-field {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.4rem;
 }
 
 .mail-field span {
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   color: var(--text-muted);
   font-weight: 500;
 }
@@ -1064,24 +1087,121 @@ input, select {
 .mail-field .filter-input {
   width: 100%;
   min-width: 0;
+  padding: 0.65rem 0.85rem;
+  font-size: 0.9rem;
 }
 
 .mail-field-full {
   grid-column: 1 / -1;
 }
 
-.mail-modal-hint {
-  font-size: 0.8rem;
+.guest-select {
+  position: relative;
+  width: 100%;
+}
+
+.guest-select-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  min-height: 2.75rem;
+}
+
+.guest-select-trigger:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.guest-select-value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+
+.guest-select-placeholder {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: var(--text-muted);
-  line-height: 1.4;
+  font-size: 0.9rem;
+}
+
+.guest-select-dropdown {
+  position: relative;
+  z-index: 5;
+  margin-top: 0.45rem;
+  max-height: 280px;
+  overflow: auto;
+  background: var(--bg-card, var(--bg-primary));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.guest-select-search {
+  width: 100%;
+  min-width: 0;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin-bottom: 0.25rem;
+  background: var(--bg-secondary);
+}
+
+.guest-select-option {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  line-height: 1.35;
+  padding: 0.65rem 0.75rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.guest-select-option:hover,
+.guest-select-option.active {
+  background: var(--accent-muted);
+  color: var(--accent);
+}
+
+.guest-select-empty {
+  padding: 0.75rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.mail-modal-hint {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.45;
   margin-bottom: 1rem;
+  flex-shrink: 0;
 }
 
 .mail-modal-actions {
   display: flex;
   justify-content: flex-end;
   gap: 0.75rem;
-  margin-top: 0.5rem;
+  margin-top: 0.25rem;
+  flex-shrink: 0;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
 }
 
 .mail-status {
@@ -1089,6 +1209,7 @@ input, select {
   padding: 0.65rem 0.75rem;
   border-radius: var(--radius-sm);
   margin-bottom: 0.75rem;
+  flex-shrink: 0;
 }
 
 .mail-status-ok {
@@ -1106,8 +1227,18 @@ input, select {
   cursor: not-allowed;
 }
 
-@media (max-width: 480px) {
+@media (max-width: 640px) {
+  .mail-modal {
+    width: calc(100vw - 1rem);
+    max-height: 92vh;
+    padding: 1.5rem;
+  }
+
   .mail-modal-fields {
     grid-template-columns: 1fr;
+  }
+
+  .guest-select-dropdown {
+    max-height: 220px;
   }
 }

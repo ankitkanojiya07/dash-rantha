@@ -65,6 +65,7 @@ export async function sendBookingsCsvMail(opts: {
   toDate: string;
   csv: string;
   bookingCount: number;
+  guestOrGroup?: string;
 }) {
   assertMailConfigured();
   const { from, user, pass } = mailConfig();
@@ -74,17 +75,28 @@ export async function sendBookingsCsvMail(opts: {
     auth: { user, pass },
   });
 
-  const filename = `${opts.agentName.replace(/[^a-zA-Z0-9_-]+/g, '_')}_bookings_${opts.fromDate}_to_${opts.toDate}.csv`;
-  const subject = `Booking report — ${opts.agentName} (${opts.fromDate} to ${opts.toDate})`;
+  const guestSuffix = opts.guestOrGroup
+    ? `_guest_${opts.guestOrGroup.replace(/[^a-zA-Z0-9_-]+/g, '_').slice(0, 40)}`
+    : '';
+  const filename = `${opts.agentName.replace(/[^a-zA-Z0-9_-]+/g, '_')}_bookings_${opts.fromDate}_to_${opts.toDate}${guestSuffix}.csv`;
+  const guestLabel = opts.guestOrGroup ? ` — ${opts.guestOrGroup}` : '';
+  const subject = `Booking report — ${opts.agentName}${guestLabel} (${opts.fromDate} to ${opts.toDate})`;
   const text = [
     `Dear ${opts.agentName},`,
     '',
     `Please find attached the booking details for ${opts.fromDate} to ${opts.toDate}.`,
+    opts.guestOrGroup ? `Filtered guest/group: ${opts.guestOrGroup}.` : '',
     `Total bookings in this period: ${opts.bookingCount}.`,
+    '',
+    opts.bookingCount === 1
+      ? "What's the update on this booking?"
+      : "What's the update on these bookings?",
     '',
     'Regards,',
     'Ranthambhore Regency',
-  ].join('\n');
+  ]
+    .filter(Boolean)
+    .join('\n');
 
   await transporter.sendMail({
     from: `"Ranthambhore Regency" <${from}>`,

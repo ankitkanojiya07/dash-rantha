@@ -50,8 +50,15 @@ export const api = {
   getBooking: (id: string) => fetchJson<Booking>(`/bookings/${id}`),
   getAgents: () => fetchJson<Agent[]>('/agents'),
   getLeaderboard: () => fetchJson<Agent[]>('/agents/leaderboard'),
-  getTopAgents: (limit = 5) => fetchJson<TopAgent[]>(`/agents/top?limit=${limit}`),
-  sendAgentMail: (body: { agentName: string; from: string; to: string; email?: string }) =>
+  getTopAgents: (limit: number | 'all' = 'all') =>
+    fetchJson<TopAgent[]>(`/agents/top?limit=${limit}`),
+  sendAgentMail: (body: {
+    agentName: string;
+    from: string;
+    to: string;
+    email?: string;
+    guestOrGroup?: string;
+  }) =>
     fetchJson<{
       message: string;
       from: string;

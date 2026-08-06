@@ -1,4 +1,4 @@
-import type { Agent, Booking, DailyOccupancy, SyncLog } from '../types.js';
+import type { Agent, Booking, DailyOccupancy, DailyRoomsByType, SyncLog } from '../types.js';
 import { parseBookingExcelBuffer } from '../sync/excelParser.js';
 import { downloadGoogleSheetXlsx, getGoogleSheetsId } from '../sync/googleSheets.js';
 import { buildAgentCanonicalMap, canonicalizeAgentName } from '../utils/agentName.js';
@@ -40,6 +40,7 @@ function applyCanonicalAgentNames(bookings: Booking[]): Booking[] {
 export interface BookingStore {
   bookings: Booking[];
   dailyOccupancy: DailyOccupancy[];
+  dailyRoomsByType: DailyRoomsByType[];
   agents: Agent[];
   syncLog: SyncLog;
   totalRooms: number;
@@ -51,6 +52,7 @@ let loadPromise: Promise<BookingStore> | null = null;
 function buildStore(parsed: {
   bookings: Booking[];
   dailyOccupancy: DailyOccupancy[];
+  dailyRoomsByType: DailyRoomsByType[];
   syncLog: SyncLog;
   totalRooms: number;
 }): BookingStore {
@@ -58,6 +60,7 @@ function buildStore(parsed: {
   return {
     bookings,
     dailyOccupancy: parsed.dailyOccupancy,
+    dailyRoomsByType: parsed.dailyRoomsByType,
     agents: buildAgents(bookings),
     syncLog: parsed.syncLog,
     totalRooms: parsed.totalRooms,

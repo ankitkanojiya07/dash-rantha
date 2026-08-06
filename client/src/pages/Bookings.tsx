@@ -44,7 +44,15 @@ const columns = [
 const MONTHS = ['Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug'];
 
 export function BookingsPage() {
-  const [filters, setFilters] = useState({ agent: '', month: '', year: '', category: '', search: '' });
+  const [filters, setFilters] = useState({
+    agent: '',
+    month: '',
+    year: '',
+    category: '',
+    search: '',
+    from: '',
+    to: '',
+  });
   const [selected, setSelected] = useState<Booking | null>(null);
   const [sorting, setSorting] = useState<SortingState>([]);
 
@@ -55,6 +63,8 @@ export function BookingsPage() {
     if (filters.year) p.year = filters.year;
     if (filters.category) p.category = filters.category;
     if (filters.search) p.search = filters.search;
+    if (filters.from) p.from = filters.from;
+    if (filters.to) p.to = filters.to;
     return p;
   }, [filters]);
 
@@ -156,6 +166,28 @@ export function BookingsPage() {
             <option key={y} value={y}>{y}</option>
           ))}
         </select>
+        <label className="filter-date">
+          <span>From</span>
+          <input
+            type="date"
+            className="filter-input"
+            value={filters.from}
+            max={filters.to || undefined}
+            onChange={(e) => setFilters({ ...filters, from: e.target.value })}
+            aria-label="From date"
+          />
+        </label>
+        <label className="filter-date">
+          <span>To</span>
+          <input
+            type="date"
+            className="filter-input"
+            value={filters.to}
+            min={filters.from || undefined}
+            onChange={(e) => setFilters({ ...filters, to: e.target.value })}
+            aria-label="To date"
+          />
+        </label>
         <button className="btn btn-ghost btn-sm" onClick={exportCSV} style={{ marginLeft: 'auto' }}>
           <Download size={14} {...ICON} />
           Export CSV

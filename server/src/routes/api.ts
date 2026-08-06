@@ -101,24 +101,31 @@ function getOccupiedBookings(bookings: Booking[], date: string) {
   return bookings.filter((b) => b.arrivalDate <= date && b.departureDate > date);
 }
 
+function occupiedByTypeForDate(date: string) {
+  const { bookings, dailyRoomsByType } = getBookingStore();
+  const fromSheet = dailyRoomsByType.find((d) => d.date === date);
+  if (fromSheet) {
+    const byType = withPrimaryRoomTypes(fromSheet.byType);
+    const totalRooms = byType.reduce((s, x) => s + x.rooms, 0);
+    return { date, totalRooms, byType };
+  }
+  const occupied = getOccupiedBookings(bookings, date);
+  const byType = withPrimaryRoomTypes(countRoomsByType(occupied));
+  const totalRooms = byType.reduce((s, x) => s + x.rooms, 0);
+  return { date, totalRooms, byType };
+}
+
 router.get('/bookings/today', (_req, res) => {
   const { bookings } = getBookingStore();
   const today = new Date().toISOString().split('T')[0];
   const arrivals = bookings.filter((b) => b.arrivalDate === today);
   const departures = bookings.filter((b) => b.departureDate === today);
-  const occupied = getOccupiedBookings(bookings, today);
-  const byType = withPrimaryRoomTypes(countRoomsByType(occupied));
-  const totalRooms = byType.reduce((s, x) => s + x.rooms, 0);
-  res.json({ arrivals, departures, occupied: { date: today, totalRooms, byType } });
+  res.json({ arrivals, departures, occupied: occupiedByTypeForDate(today) });
 });
 
 router.get('/bookings/occupied', (req, res) => {
-  const { bookings } = getBookingStore();
   const date = (req.query.date as string) || new Date().toISOString().split('T')[0];
-  const occupied = getOccupiedBookings(bookings, date);
-  const byType = withPrimaryRoomTypes(countRoomsByType(occupied));
-  const totalRooms = byType.reduce((s, x) => s + x.rooms, 0);
-  res.json({ date, totalRooms, byType });
+  res.json(occupiedByTypeForDate(date));
 });
 
 router.get('/bookings', (req, res) => {
@@ -168,12 +175,16 @@ router.get('/agents/leaderboard', (_req, res) => {
   res.json(leaderboard);
 });
 
-/** Top N agents with configured recipient emails (for Send Mail page). */
+/** Agents with configured recipient emails (for Send Mail page). */
 router.get('/agents/top', (req, res) => {
-  const limit = Math.min(parseInt(String(req.query.limit || '5'), 10) || 5, 50);
+  const rawLimit = req.query.limit;
+  const limit =
+    rawLimit === undefined || rawLimit === '' || String(rawLimit) === 'all'
+      ? Number.POSITIVE_INFINITY
+      : Math.min(Math.max(parseInt(String(rawLimit), 10) || 5, 1), 1000);
   const { agents } = getBookingStore();
   const totalRN = agents.reduce((s, a) => s + a.totalRoomNights, 0);
-  const top = agents.slice(0, limit).map((a, i) => ({
+  const top = agents.slice(0, Number.isFinite(limit) ? limit : agents.length).map((a, i) => ({
     ...a,
     rank: i + 1,
     shareOfBusiness: totalRN > 0 ? Math.round((a.totalRoomNights / totalRN) * 1000) / 10 : 0,
@@ -184,8 +195,9 @@ router.get('/agents/top', (req, res) => {
 
 /**
  * Send agent booking CSV for a date range via nodemailer (Gmail).
- * Body: { agentName, from, to, email? }
+ * Body: { agentName, from, to, email?, guestOrGroup? }
  * `email` overrides the configured agent email when provided.
+ * `guestOrGroup` optionally narrows the CSV to matching guest/group names.
  */
 router.post('/agents/send-mail', async (req, res, next) => {
   try {
@@ -193,6 +205,7 @@ router.post('/agents/send-mail', async (req, res, next) => {
     const from = String(req.body?.from || '').trim();
     const to = String(req.body?.to || '').trim();
     const emailOverride = String(req.body?.email || '').trim();
+    const guestOrGroup = String(req.body?.guestOrGroup || '').trim();
 
     if (!agentName) return res.status(400).json({ error: 'agentName is required' });
     if (!from || !to) return res.status(400).json({ error: 'from and to dates are required (YYYY-MM-DD)' });
@@ -205,14 +218,30 @@ router.post('/agents/send-mail', async (req, res, next) => {
       });
     }
 
+    const guestTerms = guestOrGroup
+      ? guestOrGroup
+          .split(',')
+          .map((s) => s.trim().toLowerCase())
+          .filter(Boolean)
+      : [];
+
     const { bookings } = getBookingStore();
     const filtered = bookings
-      .filter((b) => b.agentName === agentName && b.arrivalDate >= from && b.arrivalDate <= to)
+      .filter((b) => {
+        if (b.agentName !== agentName) return false;
+        if (b.arrivalDate < from || b.arrivalDate > to) return false;
+        if (guestTerms.length === 0) return true;
+        const name = b.guestOrGroupName.toLowerCase();
+        return guestTerms.some((term) => name.includes(term));
+      })
       .sort((a, b) => a.arrivalDate.localeCompare(b.arrivalDate));
 
     if (!filtered.length) {
+      const guestHint = guestTerms.length
+        ? ` matching guest/group "${guestOrGroup}"`
+        : '';
       return res.status(404).json({
-        error: `No bookings found for ${agentName} between ${from} and ${to}`,
+        error: `No bookings found for ${agentName}${guestHint} between ${from} and ${to}`,
       });
     }
 
@@ -224,6 +253,7 @@ router.post('/agents/send-mail', async (req, res, next) => {
       toDate: to,
       csv,
       bookingCount: filtered.length,
+      guestOrGroup: guestOrGroup || undefined,
     });
 
     res.json({
