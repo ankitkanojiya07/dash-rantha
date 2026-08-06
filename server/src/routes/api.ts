@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { getBookingStore, refreshBookingStore } from '../data/bookingStore.js';
 import type { Booking, BookingOverlap, DashboardKPIs } from '../types.js';
-import { countRoomsByType } from '../utils/roomType.js';
+import { countRoomsByType, withPrimaryRoomTypes } from '../utils/roomType.js';
 import { getAgentEmail } from '../config/agentEmails.js';
 import { bookingsToCsv, sendBookingsCsvMail } from '../services/mailService.js';
 
@@ -107,7 +107,7 @@ router.get('/bookings/today', (_req, res) => {
   const arrivals = bookings.filter((b) => b.arrivalDate === today);
   const departures = bookings.filter((b) => b.departureDate === today);
   const occupied = getOccupiedBookings(bookings, today);
-  const byType = countRoomsByType(occupied);
+  const byType = withPrimaryRoomTypes(countRoomsByType(occupied));
   const totalRooms = byType.reduce((s, x) => s + x.rooms, 0);
   res.json({ arrivals, departures, occupied: { date: today, totalRooms, byType } });
 });
@@ -116,7 +116,7 @@ router.get('/bookings/occupied', (req, res) => {
   const { bookings } = getBookingStore();
   const date = (req.query.date as string) || new Date().toISOString().split('T')[0];
   const occupied = getOccupiedBookings(bookings, date);
-  const byType = countRoomsByType(occupied);
+  const byType = withPrimaryRoomTypes(countRoomsByType(occupied));
   const totalRooms = byType.reduce((s, x) => s + x.rooms, 0);
   res.json({ date, totalRooms, byType });
 });

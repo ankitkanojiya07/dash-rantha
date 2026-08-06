@@ -18,7 +18,7 @@ import {
 } from 'date-fns';
 import { AltArrowLeft, AltArrowRight, DangerTriangle } from '@solar-icons/react';
 import { RoomsByTypeSummary } from '../components/RoomsByTypeSummary';
-import { countRoomsByType } from '../utils/roomType';
+import { countRoomsByType, withPrimaryRoomTypes } from '../utils/roomType';
 
 const ICON = { weight: 'BoldDuotone' as const };
 
@@ -92,7 +92,7 @@ export function CalendarPage() {
     overlaps?.flatMap((o) => [o.booking1._id, o.booking2._id]) ?? []
   );
 
-  const summaryByType = summaryOccupied?.byType ?? [];
+  const summaryByType = withPrimaryRoomTypes(summaryOccupied?.byType ?? []);
   const summaryTotalRooms = summaryOccupied?.totalRooms ?? 0;
 
   const dayTypeTallies = useMemo(() => {

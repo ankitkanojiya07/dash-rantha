@@ -5,8 +5,10 @@ const ICON = { weight: 'BoldDuotone' as const };
 
 const TYPE_COLORS: Record<string, string> = {
   DBL: 'room-type-dbl',
-  TPL: 'room-type-tpl',
   SGL: 'room-type-sgl',
+  TPL: 'room-type-tpl',
+  QUAD: 'room-type-other',
+  SUITE: 'room-type-other',
 };
 
 interface RoomsByTypeSummaryProps {
