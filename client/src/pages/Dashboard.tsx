@@ -17,10 +17,22 @@ import {
   Chart2,
   ClockCircle,
   Logout,
+  DocumentText,
 } from '@solar-icons/react';
 import { RoomsByTypeSummary } from '../components/RoomsByTypeSummary';
 
 const ICON = { weight: 'BoldDuotone' as const };
+
+const SHEET_LINKS = [
+  {
+    label: 'BOOKING SHEET',
+    href: 'https://docs.google.com/spreadsheets/d/13SZlTcgHOrZuD7L9EnSnjADz-3dRbT6C-99Lrz9w6EM/edit?gid=1292951595#gid=1292951595',
+  },
+  {
+    label: 'safari BOOKING',
+    href: 'https://docs.google.com/spreadsheets/d/1eJyaXG_K6uoYrlULtKAM_Pdx6q69qB5FpJ_6ifS9w0M/edit?gid=1837021078#gid=1837021078',
+  },
+] as const;
 
 export function DashboardPage() {
   const queryClient = useQueryClient();
@@ -94,9 +106,26 @@ export function DashboardPage() {
 
   return (
     <>
-      <div className="page-header">
-        <h1 className="page-title">Live Dashboard</h1>
-        <p className="page-subtitle">Real-time overview of hotel bookings and occupancy</p>
+      <div className="page-header page-header-row">
+        <div>
+          <h1 className="page-title">Live Dashboard</h1>
+          <p className="page-subtitle">Real-time overview of hotel bookings and occupancy</p>
+        </div>
+        <div className="sheet-tabs" role="tablist" aria-label="Booking sheets">
+          {SHEET_LINKS.map((sheet) => (
+            <a
+              key={sheet.label}
+              href={sheet.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="sheet-tab"
+              role="tab"
+            >
+              <DocumentText size={15} {...ICON} />
+              {sheet.label}
+            </a>
+          ))}
+        </div>
       </div>
 
       <div className="sync-bar">
