@@ -252,7 +252,7 @@ router.post('/agents/send-mail', async (req, res, next) => {
       fromDate: from,
       toDate: to,
       csv,
-      bookingCount: filtered.length,
+      bookings: filtered,
       guestOrGroup: guestOrGroup || undefined,
     });
 
