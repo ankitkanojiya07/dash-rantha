@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMemo, useState } from 'react';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import {
   useReactTable,
   getCoreRowModel,
@@ -13,6 +13,11 @@ import type { Booking } from '../types';
 import { BookingDetailPanel } from '../components/BookingDetail';
 import { format, parseISO } from 'date-fns';
 import { Download } from '@solar-icons/react';
+import {
+  ROOM_THRESHOLDS,
+  bookingMatchesSearch,
+  parseBookingSearch,
+} from '../utils/bookingSearch';
 
 const ICON = { weight: 'BoldDuotone' as const };
 
@@ -43,6 +48,21 @@ const columns = [
 
 const MONTHS = ['Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug'];
 
+function csvEscape(value: string | number) {
+  return `"${String(value ?? '').replace(/"/g, '""')}"`;
+}
+
+function downloadCsv(filename: string, headers: string[], rows: (string | number)[][]) {
+  const csv = [headers, ...rows].map((r) => r.map(csvEscape).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export function BookingsPage() {
   const [filters, setFilters] = useState({
     agent: '',
@@ -52,9 +72,11 @@ export function BookingsPage() {
     search: '',
     from: '',
     to: '',
+    maxRooms: '',
   });
   const [selected, setSelected] = useState<Booking | null>(null);
   const [sorting, setSorting] = useState<SortingState>([]);
+  const [focusDate, setFocusDate] = useState<string | null>(null);
 
   const queryParams = useMemo(() => {
     const p: Record<string, string> = {};
@@ -62,15 +84,15 @@ export function BookingsPage() {
     if (filters.month) p.month = filters.month;
     if (filters.year) p.year = filters.year;
     if (filters.category) p.category = filters.category;
-    if (filters.search) p.search = filters.search;
     if (filters.from) p.from = filters.from;
     if (filters.to) p.to = filters.to;
     return p;
-  }, [filters]);
+  }, [filters.agent, filters.month, filters.year, filters.category, filters.from, filters.to]);
 
-  const { data: bookings, isLoading } = useQuery({
+  const { data: bookings, isLoading, isFetching } = useQuery({
     queryKey: ['bookings', queryParams],
     queryFn: () => api.getBookings(queryParams),
+    placeholderData: keepPreviousData,
   });
 
   const { data: agents } = useQuery({
@@ -78,17 +100,52 @@ export function BookingsPage() {
     queryFn: api.getAgents,
   });
 
-  const { data: yearOptions = [] } = useQuery({
-    queryKey: ['booking-years'],
-    queryFn: async () => {
-      const all = await api.getBookings();
-      return [...new Set(all.map((b) => b.arrivalDate.slice(0, 4)))].sort((a, b) => b.localeCompare(a));
-    },
+  const { data: occupancyAll = [] } = useQuery({
+    queryKey: ['occupancy', 'all'],
+    queryFn: () => api.getOccupancy('all'),
     staleTime: 10 * 60 * 1000,
   });
 
+  const parsedSearch = useMemo(() => parseBookingSearch(filters.search), [filters.search]);
+
+  const maxRooms = useMemo(() => {
+    const fromSelect = filters.maxRooms ? Number(filters.maxRooms) : null;
+    return fromSelect || parsedSearch.maxRooms;
+  }, [filters.maxRooms, parsedSearch.maxRooms]);
+
+  const lowOccupancyDates = useMemo(() => {
+    if (!maxRooms) return [];
+    return occupancyAll
+      .filter((o) => o.roomsOccupied < maxRooms)
+      .sort((a, b) => a.date.localeCompare(b.date));
+  }, [occupancyAll, maxRooms]);
+
+  const yearOptions = useMemo(() => {
+    const years = new Set<string>();
+    occupancyAll.forEach((o) => years.add(o.date.slice(0, 4)));
+    bookings?.forEach((b) => years.add(b.arrivalDate.slice(0, 4)));
+    return [...years].sort((a, b) => b.localeCompare(a));
+  }, [occupancyAll, bookings]);
+
+  const categoryOptions = useMemo(() => {
+    const set = new Set<string>();
+    bookings?.forEach((b) => {
+      if (b.roomCategoryOrStatus) set.add(b.roomCategoryOrStatus);
+    });
+    return [...set].sort((a, b) => a.localeCompare(b));
+  }, [bookings]);
+
+  const displayed = useMemo(() => {
+    let rows = bookings ?? [];
+    if (focusDate) {
+      rows = rows.filter((b) => b.arrivalDate <= focusDate && b.departureDate > focusDate);
+    }
+    rows = rows.filter((b) => bookingMatchesSearch(b, parsedSearch));
+    return rows;
+  }, [bookings, parsedSearch, focusDate]);
+
   const table = useReactTable({
-    data: bookings ?? [],
+    data: displayed,
     columns,
     state: { sorting },
     onSortingChange: setSorting,
@@ -96,24 +153,59 @@ export function BookingsPage() {
     getSortedRowModel: getSortedRowModel(),
   });
 
-  function exportCSV() {
-    if (!bookings?.length) return;
-    const headers = ['Ref', 'Guest', 'Room', 'Rooms', 'Agent', 'Arrival', 'Departure', 'Nights', 'Room Nights', 'Category'];
-    const rows = bookings.map((b) => [
-      b.bookingRef, b.guestOrGroupName, b.finalRoom, b.noOfRooms, b.agentName,
-      b.arrivalDate, b.departureDate, b.nights, b.nights * b.noOfRooms, b.roomCategoryOrStatus,
+  function exportBookingsCsv() {
+    if (!displayed.length) return;
+    const headers = [
+      'Ref',
+      'Guest / Group',
+      'Room',
+      'Rooms',
+      'Agent',
+      'Arrival',
+      'Departure',
+      'Nights',
+      'Room Nights',
+      'Category',
+      'Month',
+      'Remarks',
+    ];
+    const rows = displayed.map((b) => [
+      b.bookingRef,
+      b.guestOrGroupName,
+      b.finalRoom,
+      b.noOfRooms,
+      b.agentName,
+      b.arrivalDate,
+      b.departureDate,
+      b.nights,
+      b.nights * b.noOfRooms,
+      b.roomCategoryOrStatus,
+      b.monthSheet,
+      b.remarks,
     ]);
-    const csv = [headers, ...rows].map((r) => r.map((c) => `"${c}"`).join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'bookings-export.csv';
-    a.click();
-    URL.revokeObjectURL(url);
+    const suffix = [
+      filters.agent,
+      filters.month,
+      filters.year,
+      maxRooms ? `under${maxRooms}` : '',
+      focusDate,
+    ]
+      .filter(Boolean)
+      .join('-')
+      .replace(/[^a-zA-Z0-9_-]+/g, '_');
+    downloadCsv(`bookings-export${suffix ? `-${suffix}` : ''}.csv`, headers, rows);
   }
 
-  if (isLoading) {
+  function exportOccupancyCsv() {
+    if (!lowOccupancyDates.length || !maxRooms) return;
+    downloadCsv(
+      `dates-under-${maxRooms}-rooms.csv`,
+      ['Date', 'Rooms Booked'],
+      lowOccupancyDates.map((d) => [d.date, d.roomsOccupied]),
+    );
+  }
+
+  if (isLoading && !bookings) {
     return (
       <div className="loading">
         <div className="spinner" />
@@ -132,10 +224,31 @@ export function BookingsPage() {
       <div className="filters-bar">
         <input
           className="filter-input"
-          placeholder="Search guest, ref, room..."
+          type="search"
+          placeholder="Search guest, ref, dates… e.g. 3 November or less than 40"
           value={filters.search}
-          onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+          onChange={(e) => {
+            setFocusDate(null);
+            setFilters({ ...filters, search: e.target.value });
+          }}
+          aria-label="Search bookings"
         />
+        <select
+          className="filter-select"
+          value={filters.maxRooms}
+          onChange={(e) => {
+            setFocusDate(null);
+            setFilters({ ...filters, maxRooms: e.target.value });
+          }}
+          aria-label="Days with fewer than this many rooms"
+        >
+          <option value="">Any occupancy</option>
+          {ROOM_THRESHOLDS.map((n) => (
+            <option key={n} value={n}>
+              Fewer than {n} rooms
+            </option>
+          ))}
+        </select>
         <select
           className="filter-select"
           value={filters.agent}
@@ -143,7 +256,9 @@ export function BookingsPage() {
         >
           <option value="">All Agents</option>
           {agents?.map((a) => (
-            <option key={a._id} value={a.agentName}>{a.agentName}</option>
+            <option key={a._id} value={a.agentName}>
+              {a.agentName}
+            </option>
           ))}
         </select>
         <select
@@ -153,7 +268,9 @@ export function BookingsPage() {
         >
           <option value="">All Months</option>
           {MONTHS.map((m) => (
-            <option key={m} value={m}>{m}</option>
+            <option key={m} value={m}>
+              {m}
+            </option>
           ))}
         </select>
         <select
@@ -163,7 +280,21 @@ export function BookingsPage() {
         >
           <option value="">All Years</option>
           {yearOptions.map((y) => (
-            <option key={y} value={y}>{y}</option>
+            <option key={y} value={y}>
+              {y}
+            </option>
+          ))}
+        </select>
+        <select
+          className="filter-select"
+          value={filters.category}
+          onChange={(e) => setFilters({ ...filters, category: e.target.value })}
+        >
+          <option value="">All Categories</option>
+          {categoryOptions.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
           ))}
         </select>
         <label className="filter-date">
@@ -188,13 +319,51 @@ export function BookingsPage() {
             aria-label="To date"
           />
         </label>
-        <button className="btn btn-ghost btn-sm" onClick={exportCSV} style={{ marginLeft: 'auto' }}>
+        <button className="btn btn-ghost btn-sm" onClick={exportBookingsCsv} style={{ marginLeft: 'auto' }}>
           <Download size={14} {...ICON} />
           Export CSV
         </button>
       </div>
 
-      <div className="card" style={{ padding: 0 }}>
+      {maxRooms ? (
+        <div className="card occupancy-dates-card">
+          <div className="card-title">
+            <span>Dates with fewer than {maxRooms} rooms booked</span>
+            <span className="badge badge-accent">{lowOccupancyDates.length} days</span>
+            {lowOccupancyDates.length > 0 && (
+              <button type="button" className="btn btn-ghost btn-sm" onClick={exportOccupancyCsv}>
+                <Download size={14} {...ICON} />
+                Export dates CSV
+              </button>
+            )}
+          </div>
+          {lowOccupancyDates.length === 0 ? (
+            <div className="empty-state">No dates found under {maxRooms} rooms</div>
+          ) : (
+            <div className="occupancy-dates-grid">
+              {lowOccupancyDates.map((d) => (
+                <button
+                  key={d.date}
+                  type="button"
+                  className={`occupancy-date-chip ${focusDate === d.date ? 'active' : ''}`}
+                  onClick={() => setFocusDate(focusDate === d.date ? null : d.date)}
+                >
+                  <span>{format(parseISO(d.date), 'd MMM yyyy')}</span>
+                  <strong>{d.roomsOccupied} rooms</strong>
+                </button>
+              ))}
+            </div>
+          )}
+          {focusDate && (
+            <p className="occupancy-dates-hint">
+              Showing bookings in-house on {format(parseISO(focusDate), 'd MMMM yyyy')}. Click the date again to
+              clear.
+            </p>
+          )}
+        </div>
+      ) : null}
+
+      <div className={`card ${isFetching ? 'is-fetching' : ''}`} style={{ padding: 0 }}>
         <div className="table-wrap">
           <table className="data-table">
             <thead>
@@ -214,20 +383,26 @@ export function BookingsPage() {
               ))}
             </thead>
             <tbody>
-              {table.getRowModel().rows.map((row) => (
-                <tr key={row.id} onClick={() => setSelected(row.original)}>
-                  {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id}>
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </td>
-                  ))}
+              {table.getRowModel().rows.length === 0 ? (
+                <tr>
+                  <td colSpan={columns.length} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
+                    No bookings match the current filters
+                  </td>
                 </tr>
-              ))}
+              ) : (
+                table.getRowModel().rows.map((row) => (
+                  <tr key={row.id} onClick={() => setSelected(row.original)}>
+                    {row.getVisibleCells().map((cell) => (
+                      <td key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</td>
+                    ))}
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
         <div style={{ padding: '0.75rem 1rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-          {bookings?.length ?? 0} bookings
+          {displayed.length} bookings
         </div>
       </div>
 

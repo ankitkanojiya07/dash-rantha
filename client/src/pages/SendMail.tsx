@@ -16,8 +16,8 @@ function GuestGroupSelect({
   agentName: string;
   fromDate: string;
   toDate: string;
-  value: string;
-  onChange: (value: string) => void;
+  value: string[];
+  onChange: (value: string[]) => void;
   disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
@@ -51,10 +51,17 @@ function GuestGroupSelect({
     return guests.filter((g) => g.toLowerCase().includes(q));
   }, [guests, guestSearch]);
 
+  const selectedBookings = useMemo(() => {
+    if (!bookings?.length) return [];
+    if (value.length === 0) return bookings;
+    const selected = new Set(value.map((g) => g.toLowerCase()));
+    return bookings.filter((b) => selected.has(b.guestOrGroupName.trim().toLowerCase()));
+  }, [bookings, value]);
+
   useEffect(() => {
-    if (value && guests.length > 0 && !guests.includes(value)) {
-      onChange('');
-    }
+    if (value.length === 0 || guests.length === 0) return;
+    const next = value.filter((g) => guests.includes(g));
+    if (next.length !== value.length) onChange(next);
   }, [guests, value, onChange]);
 
   useEffect(() => {
@@ -80,6 +87,11 @@ function GuestGroupSelect({
         ? 'No guests in this date range'
         : 'All guests / groups';
 
+  function toggleGuest(name: string) {
+    if (value.includes(name)) onChange(value.filter((g) => g !== name));
+    else onChange([...value, name]);
+  }
+
   return (
     <div className="guest-select" ref={rootRef}>
       <button
@@ -90,14 +102,36 @@ function GuestGroupSelect({
         aria-expanded={open}
         aria-haspopup="listbox"
       >
-        <span className={value ? 'guest-select-value' : 'guest-select-placeholder'}>
-          {value || placeholder}
+        <span className={value.length ? 'guest-select-value' : 'guest-select-placeholder'}>
+          {value.length === 0
+            ? placeholder
+            : value.length === 1
+              ? value[0]
+              : `${value.length} groups selected`}
         </span>
         <AltArrowDown size={14} {...ICON} />
       </button>
 
+      {value.length > 0 && (
+        <div className="guest-chip-row">
+          {value.map((g) => (
+            <button
+              key={g}
+              type="button"
+              className="guest-chip"
+              onClick={() => !disabled && toggleGuest(g)}
+              disabled={disabled}
+              title="Remove group"
+            >
+              {g}
+              <span aria-hidden>×</span>
+            </button>
+          ))}
+        </div>
+      )}
+
       {open && (
-        <div className="guest-select-dropdown" role="listbox">
+        <div className="guest-select-dropdown" role="listbox" aria-multiselectable="true">
           <input
             ref={searchRef}
             type="text"
@@ -109,33 +143,39 @@ function GuestGroupSelect({
           />
           <button
             type="button"
-            className={`guest-select-option ${!value ? 'active' : ''}`}
-            onClick={() => {
-              onChange('');
-              setOpen(false);
-            }}
+            className={`guest-select-option ${value.length === 0 ? 'active' : ''}`}
+            onClick={() => onChange([])}
           >
             All guests / groups
           </button>
           {filteredGuests.length === 0 ? (
             <div className="guest-select-empty">No matches</div>
           ) : (
-            filteredGuests.map((g) => (
-              <button
-                key={g}
-                type="button"
-                className={`guest-select-option ${value === g ? 'active' : ''}`}
-                onClick={() => {
-                  onChange(g);
-                  setOpen(false);
-                }}
-                title={g}
-              >
-                {g}
-              </button>
-            ))
+            filteredGuests.map((g) => {
+              const checked = value.includes(g);
+              return (
+                <button
+                  key={g}
+                  type="button"
+                  className={`guest-select-option ${checked ? 'active' : ''}`}
+                  onClick={() => toggleGuest(g)}
+                  title={g}
+                >
+                  <span className={`guest-check ${checked ? 'on' : ''}`} aria-hidden>
+                    {checked ? '✓' : ''}
+                  </span>
+                  {g}
+                </button>
+              );
+            })
           )}
         </div>
+      )}
+
+      {datesReady && !isFetching && (
+        <p className="guest-select-count">
+          {selectedBookings.length} booking{selectedBookings.length === 1 ? '' : 's'} will be included in the CSV
+        </p>
       )}
     </div>
   );
@@ -147,7 +187,7 @@ export function SendMailPage() {
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [email, setEmail] = useState('');
-  const [guestOrGroup, setGuestOrGroup] = useState('');
+  const [guestOrGroup, setGuestOrGroup] = useState<string[]>([]);
   const [sending, setSending] = useState(false);
   const [status, setStatus] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
 
@@ -168,7 +208,7 @@ export function SendMailPage() {
     setEmail(agent.email || '');
     setFromDate('');
     setToDate('');
-    setGuestOrGroup('');
+    setGuestOrGroup([]);
     setStatus(null);
   }
 
@@ -180,12 +220,12 @@ export function SendMailPage() {
 
   function setFrom(value: string) {
     setFromDate(value);
-    setGuestOrGroup('');
+    setGuestOrGroup([]);
   }
 
   function setTo(value: string) {
     setToDate(value);
-    setGuestOrGroup('');
+    setGuestOrGroup([]);
   }
 
   async function handleSend() {
@@ -211,7 +251,7 @@ export function SendMailPage() {
         from: fromDate,
         to: toDate,
         email: email.trim(),
-        guestOrGroup: guestOrGroup.trim() || undefined,
+        guestOrGroup: guestOrGroup.length ? guestOrGroup : undefined,
       });
       setStatus({
         type: 'ok',
@@ -241,7 +281,7 @@ export function SendMailPage() {
       <div className="page-header">
         <h1 className="page-title">Send Mail</h1>
         <p className="page-subtitle">
-          Email booking CSVs to agents for a date range — optionally filter by guest/group
+          Email booking CSVs to agents for a date range — click groups to include more bookings
         </p>
       </div>
 
@@ -371,7 +411,7 @@ export function SendMailPage() {
                 />
               </label>
               <label className="mail-field mail-field-full">
-                <span>Guest / Group (optional)</span>
+                <span>Guest / Group (click to add more)</span>
                 <GuestGroupSelect
                   agentName={selected.agentName}
                   fromDate={fromDate}
@@ -384,8 +424,8 @@ export function SendMailPage() {
             </div>
 
             <p className="mail-modal-hint">
-              Pick From and To dates first — Guest / Group options load from that agent&apos;s
-              bookings in the range. Leave Guest / Group as “All” to include every booking.
+              Pick From and To dates first, then click each group you want in the status CSV. Leave it as
+              “All” to include every booking in the range.
             </p>
 
             {status && (

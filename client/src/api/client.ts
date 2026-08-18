@@ -34,7 +34,11 @@ export type TopAgent = Agent & {
 
 export const api = {
   getKPIs: () => fetchJson<DashboardKPIs>('/dashboard/kpis'),
-  getOccupancy: (days = 30) => fetchJson<DailyOccupancy[]>(`/occupancy?days=${days}`),
+  getOccupancy: (days: number | 'all' = 30, maxRooms?: number) => {
+    const params = new URLSearchParams({ days: String(days) });
+    if (maxRooms != null) params.set('maxRooms', String(maxRooms));
+    return fetchJson<DailyOccupancy[]>(`/occupancy?${params}`);
+  },
   getTodayBookings: () =>
     fetchJson<{ arrivals: Booking[]; departures: Booking[]; occupied: OccupiedByType }>(
       '/bookings/today',
@@ -57,7 +61,7 @@ export const api = {
     from: string;
     to: string;
     email?: string;
-    guestOrGroup?: string;
+    guestOrGroup?: string | string[];
   }) =>
     fetchJson<{
       message: string;

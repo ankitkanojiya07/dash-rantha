@@ -1197,7 +1197,9 @@ input, select {
 }
 
 .guest-select-option {
-  display: block;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
   width: 100%;
   text-align: left;
   background: transparent;
@@ -1216,6 +1218,112 @@ input, select {
 .guest-select-option.active {
   background: var(--accent-muted);
   color: var(--accent);
+}
+
+.guest-check {
+  flex-shrink: 0;
+  width: 1.05rem;
+  height: 1.05rem;
+  margin-top: 0.1rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  line-height: 1;
+  color: var(--bg-primary);
+}
+
+.guest-check.on {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.guest-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.55rem;
+}
+
+.guest-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  max-width: 100%;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  background: var(--accent-muted);
+  color: var(--accent);
+  font-size: 0.75rem;
+  line-height: 1.3;
+}
+
+.guest-chip span {
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
+.guest-select-count {
+  margin-top: 0.45rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.occupancy-dates-card .card-title {
+  margin-bottom: 0.75rem;
+}
+
+.occupancy-dates-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  max-height: 220px;
+  overflow: auto;
+}
+
+.occupancy-date-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  padding: 0.45rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  text-align: left;
+}
+
+.occupancy-date-chip strong {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.occupancy-date-chip:hover,
+.occupancy-date-chip.active {
+  border-color: var(--accent);
+  background: var(--accent-muted);
+}
+
+.occupancy-dates-hint {
+  margin-top: 0.75rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.card.is-fetching {
+  opacity: 0.85;
+}
+
+.agent-detail-panel {
+  width: min(760px, 100vw);
+}
+
+.agent-detail-panel .data-table tbody tr {
+  cursor: pointer;
 }
 
 .guest-select-empty {

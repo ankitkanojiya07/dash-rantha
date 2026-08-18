@@ -81,18 +81,36 @@ router.get('/dashboard/kpis', (_req, res) => {
 });
 
 router.get('/occupancy', (req, res) => {
-  const { dailyOccupancy, totalRooms } = getBookingStore();
-  const days = parseInt(req.query.days as string) || 30;
-  const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - days);
-  const cutoffStr = cutoff.toISOString().split('T')[0];
+  const { dailyOccupancy, dailyRoomsByType, totalRooms } = getBookingStore();
+  const daysParam = String(req.query.days ?? '30');
+  const maxRooms = parseInt(String(req.query.maxRooms ?? ''), 10);
+  const occByDate = new Map(dailyOccupancy.map((o) => [o.date, o]));
+  const sheetTotals = new Map(dailyRoomsByType.map((d) => [d.date, d.totalRooms]));
 
-  const data = dailyOccupancy
-    .filter((o) => o.date >= cutoffStr)
-    .map((o) => ({
-      ...o,
-      occupancyPct: Math.round((o.roomsOccupied / totalRooms) * 100),
-    }));
+  let data = [...new Set([...occByDate.keys(), ...sheetTotals.keys()])]
+    .sort()
+    .map((date) => {
+      const occ = occByDate.get(date);
+      const roomsOccupied = sheetTotals.get(date) ?? occ?.roomsOccupied ?? 0;
+      return {
+        _id: occ?._id ?? `occ-${date}`,
+        date,
+        roomsOccupied,
+        occupancyPct: totalRooms > 0 ? Math.round((roomsOccupied / totalRooms) * 100) : 0,
+      };
+    });
+
+  if (daysParam !== 'all') {
+    const days = parseInt(daysParam, 10) || 30;
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - days);
+    const cutoffStr = cutoff.toISOString().split('T')[0];
+    data = data.filter((o) => o.date >= cutoffStr);
+  }
+
+  if (Number.isFinite(maxRooms) && maxRooms > 0) {
+    data = data.filter((o) => o.roomsOccupied < maxRooms);
+  }
 
   res.json(data);
 });
@@ -138,16 +156,29 @@ router.get('/bookings', (req, res) => {
   if (month) result = result.filter((b) => b.monthSheet === month);
   if (year) result = result.filter((b) => b.arrivalDate.startsWith(String(year)));
   if (category) result = result.filter((b) => b.roomCategoryOrStatus === category);
-  if (from) result = result.filter((b) => b.arrivalDate >= (from as string));
-  if (to) result = result.filter((b) => b.arrivalDate <= (to as string));
+  if (from || to) {
+    const fromDate = (from as string) || '0000-01-01';
+    const toDate = (to as string) || '9999-12-31';
+    result = result.filter((b) => b.arrivalDate <= toDate && b.departureDate > fromDate);
+  }
   if (search) {
     const q = (search as string).toLowerCase();
-    result = result.filter(
-      (b) =>
-        b.guestOrGroupName.toLowerCase().includes(q) ||
-        b.bookingRef.toLowerCase().includes(q) ||
-        b.finalRoom.toLowerCase().includes(q)
-    );
+    result = result.filter((b) => {
+      const haystack = [
+        b.guestOrGroupName,
+        b.bookingRef,
+        b.finalRoom,
+        b.agentName,
+        b.roomCategoryOrStatus,
+        b.monthSheet,
+        b.remarks,
+        b.arrivalDate,
+        b.departureDate,
+      ]
+        .join(' ')
+        .toLowerCase();
+      return haystack.includes(q);
+    });
   }
 
   result.sort((a, b) => b.arrivalDate.localeCompare(a.arrivalDate));
@@ -205,7 +236,10 @@ router.post('/agents/send-mail', async (req, res, next) => {
     const from = String(req.body?.from || '').trim();
     const to = String(req.body?.to || '').trim();
     const emailOverride = String(req.body?.email || '').trim();
-    const guestOrGroup = String(req.body?.guestOrGroup || '').trim();
+    const rawGuests = req.body?.guestOrGroup;
+    const guestOrGroup = Array.isArray(rawGuests)
+      ? rawGuests.map((s) => String(s).trim()).filter(Boolean).join(', ')
+      : String(rawGuests || '').trim();
 
     if (!agentName) return res.status(400).json({ error: 'agentName is required' });
     if (!from || !to) return res.status(400).json({ error: 'from and to dates are required (YYYY-MM-DD)' });
@@ -218,21 +252,23 @@ router.post('/agents/send-mail', async (req, res, next) => {
       });
     }
 
-    const guestTerms = guestOrGroup
-      ? guestOrGroup
-          .split(',')
-          .map((s) => s.trim().toLowerCase())
-          .filter(Boolean)
-      : [];
+    const guestTerms = Array.isArray(rawGuests)
+      ? rawGuests.map((s) => String(s).trim().toLowerCase()).filter(Boolean)
+      : guestOrGroup
+        ? guestOrGroup
+            .split(',')
+            .map((s) => s.trim().toLowerCase())
+            .filter(Boolean)
+        : [];
 
     const { bookings } = getBookingStore();
     const filtered = bookings
       .filter((b) => {
         if (b.agentName !== agentName) return false;
-        if (b.arrivalDate < from || b.arrivalDate > to) return false;
+        if (!(b.arrivalDate <= to && b.departureDate > from)) return false;
         if (guestTerms.length === 0) return true;
-        const name = b.guestOrGroupName.toLowerCase();
-        return guestTerms.some((term) => name.includes(term));
+        const name = b.guestOrGroupName.trim().toLowerCase();
+        return guestTerms.some((term) => name === term || name.includes(term));
       })
       .sort((a, b) => a.arrivalDate.localeCompare(b.arrivalDate));
 
