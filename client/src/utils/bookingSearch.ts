@@ -1,7 +1,7 @@
 import { addDays, parseISO } from 'date-fns';
 import type { Booking } from '../types';
 
-export const ROOM_THRESHOLDS = [40, 80, 100, 140] as const;
+export const ROOM_THRESHOLDS = [30, 40, 60, 80, 100, 140] as const;
 
 const MONTH_LOOKUP: Record<string, number> = {
   jan: 1,

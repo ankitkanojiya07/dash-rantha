@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { getBookingStore, refreshBookingStore } from '../data/bookingStore.js';
 import type { Booking, BookingOverlap, DashboardKPIs } from '../types.js';
 import { countRoomsByType, withPrimaryRoomTypes } from '../utils/roomType.js';
+import { categoryMatchKey } from '../utils/categoryName.js';
 import { getAgentEmail } from '../config/agentEmails.js';
 import { bookingsToCsv, sendBookingsCsvMail } from '../services/mailService.js';
 
@@ -155,7 +156,12 @@ router.get('/bookings', (req, res) => {
   if (agent) result = result.filter((b) => b.agentName === agent);
   if (month) result = result.filter((b) => b.monthSheet === month);
   if (year) result = result.filter((b) => b.arrivalDate.startsWith(String(year)));
-  if (category) result = result.filter((b) => b.roomCategoryOrStatus === category);
+  if (category) {
+    const key = categoryMatchKey(String(category));
+    result = result.filter(
+      (b) => b.roomCategoryOrStatus === category || categoryMatchKey(b.roomCategoryOrStatus) === key,
+    );
+  }
   if (from || to) {
     const fromDate = (from as string) || '0000-01-01';
     const toDate = (to as string) || '9999-12-31';

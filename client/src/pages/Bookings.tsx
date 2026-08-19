@@ -124,15 +124,32 @@ export function BookingsPage() {
     const years = new Set<string>();
     occupancyAll.forEach((o) => years.add(o.date.slice(0, 4)));
     bookings?.forEach((b) => years.add(b.arrivalDate.slice(0, 4)));
+    years.delete('2025');
     return [...years].sort((a, b) => b.localeCompare(a));
   }, [occupancyAll, bookings]);
 
   const categoryOptions = useMemo(() => {
-    const set = new Set<string>();
+    const byKey = new Map<string, { name: string; count: number }>();
     bookings?.forEach((b) => {
-      if (b.roomCategoryOrStatus) set.add(b.roomCategoryOrStatus);
+      const name = b.roomCategoryOrStatus?.trim();
+      if (!name) return;
+      const key = name
+        .toLowerCase()
+        .replace(/&/g, ' and ')
+        .replace(/[.,/_|+'’`-]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      const existing = byKey.get(key);
+      if (!existing) {
+        byKey.set(key, { name, count: 1 });
+        return;
+      }
+      existing.count += 1;
+      if (name.length < existing.name.length) existing.name = name;
     });
-    return [...set].sort((a, b) => a.localeCompare(b));
+    return [...byKey.values()]
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map((x) => x.name);
   }, [bookings]);
 
   const displayed = useMemo(() => {

@@ -2,6 +2,7 @@ import type { Agent, Booking, DailyOccupancy, DailyRoomsByType, SyncLog } from '
 import { parseBookingExcelBuffer } from '../sync/excelParser.js';
 import { downloadGoogleSheetXlsx, getGoogleSheetsId } from '../sync/googleSheets.js';
 import { buildAgentCanonicalMap, canonicalizeAgentName } from '../utils/agentName.js';
+import { buildCategoryCanonicalMap, canonicalizeCategory } from '../utils/categoryName.js';
 
 function getRoomNights(b: Booking) {
   return b.nights * b.noOfRooms;
@@ -29,11 +30,13 @@ function buildAgents(bookings: Booking[]): Agent[] {
     .sort((a, b) => b.totalRoomNights - a.totalRoomNights);
 }
 
-function applyCanonicalAgentNames(bookings: Booking[]): Booking[] {
-  const map = buildAgentCanonicalMap(bookings.map((b) => b.agentName));
+function applyCanonicalLabels(bookings: Booking[]): Booking[] {
+  const agentMap = buildAgentCanonicalMap(bookings.map((b) => b.agentName));
+  const categoryMap = buildCategoryCanonicalMap(bookings.map((b) => b.roomCategoryOrStatus));
   return bookings.map((b) => ({
     ...b,
-    agentName: canonicalizeAgentName(b.agentName, map),
+    agentName: canonicalizeAgentName(b.agentName, agentMap),
+    roomCategoryOrStatus: canonicalizeCategory(b.roomCategoryOrStatus, categoryMap),
   }));
 }
 
@@ -56,7 +59,7 @@ function buildStore(parsed: {
   syncLog: SyncLog;
   totalRooms: number;
 }): BookingStore {
-  const bookings = applyCanonicalAgentNames(parsed.bookings);
+  const bookings = applyCanonicalLabels(parsed.bookings);
   return {
     bookings,
     dailyOccupancy: parsed.dailyOccupancy,
