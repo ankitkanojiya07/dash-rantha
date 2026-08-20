@@ -46,15 +46,41 @@ function isValidArrivalDate(iso: string): boolean {
   return year >= 2025 && year <= 2030;
 }
 
-function bookingKey(b: Pick<Booking, 'guestOrGroupName' | 'finalRoom' | 'arrivalDate' | 'agentName' | 'nights' | 'noOfRooms'>) {
-  return [b.guestOrGroupName, b.finalRoom, b.arrivalDate, b.agentName, b.nights, b.noOfRooms].join('|');
+/** Normalize for identity matching — sheet re-lists the same stay under each day block. */
+function normalizeKeyPart(value: string): string {
+  return value.toLowerCase().trim().replace(/\s+/g, ' ');
+}
+
+/**
+ * Same stay = guest + room + arrival + agent + nights.
+ * Room count is intentionally excluded: day blocks often repeat a booking with
+ * different noOfRooms (e.g. Kapil 6 then 4), which must not create extra stays.
+ */
+function bookingKey(b: Pick<Booking, 'guestOrGroupName' | 'finalRoom' | 'arrivalDate' | 'agentName' | 'nights'>) {
+  return [
+    normalizeKeyPart(b.guestOrGroupName),
+    normalizeKeyPart(b.finalRoom),
+    b.arrivalDate,
+    normalizeKeyPart(b.agentName),
+    b.nights,
+  ].join('|');
+}
+
+function preferBooking(a: Booking, b: Booking): Booking {
+  // Prefer the higher room count (blocked rooms); on tie, prefer Title Case guest name.
+  if (b.noOfRooms !== a.noOfRooms) return b.noOfRooms > a.noOfRooms ? b : a;
+  const aLower = a.guestOrGroupName[0] === a.guestOrGroupName[0]?.toLowerCase();
+  const bLower = b.guestOrGroupName[0] === b.guestOrGroupName[0]?.toLowerCase();
+  if (aLower !== bLower) return aLower ? b : a;
+  return a;
 }
 
 function dedupeBookings(bookings: Booking[]): Booking[] {
   const seen = new Map<string, Booking>();
   for (const booking of bookings) {
     const key = bookingKey(booking);
-    if (!seen.has(key)) seen.set(key, booking);
+    const prev = seen.get(key);
+    seen.set(key, prev ? preferBooking(prev, booking) : booking);
   }
   return [...seen.values()];
 }

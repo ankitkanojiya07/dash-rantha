@@ -15,3 +15,4 @@
 - Departure dates are derived from arrival plus nights when sheet dates are unreliable
 - Google Sheets XLSX export can be CDN-cached; production sync must cache-bust the export URL and use `cache: 'no-store'` or live can diverge from local/Excel
 - Hotel calendar “today” uses Asia/Kolkata
+- Spreadsheet day blocks re-list the same multi-night stay under each night; dedupe by guest+room+arrival+agent+nights (case/whitespace-insensitive), keeping the higher room count — otherwise Rooms Booked overcounts (e.g. Oct 1 Kapil Sharma 56 vs Excel 46)
