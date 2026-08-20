@@ -35,7 +35,7 @@ export interface RoomTypeCount {
   bookings: number;
 }
 
-/** Per-day room breakdown taken from the sheet day-block (matches Excel TOTAL). */
+/** Per-day room breakdown from in-house stays (arrival..departure-1). */
 export interface DailyRoomsByType {
   date: string;
   totalRooms: number;

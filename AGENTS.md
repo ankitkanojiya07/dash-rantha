@@ -1,7 +1,7 @@
 ## Learned User Preferences
 
 - Always show the SGL segment in Rooms Booked alongside DBL and TPL, including when the count is 0
-- Prefer Rooms Booked day totals to match the spreadsheet’s day-block room counts rather than stay-range inference alone
+- Prefer Rooms Booked day totals from in-house stay nights (arrival through departure−1), not spreadsheet day-block row sums (those mis-attribute New Year blocks across years)
 - Bookings occupancy search should support fewer-than thresholds of 30, 40, 60, 80, 100, and 140 rooms
 - Omit past years such as 2025 from the Bookings year filter
 - Collapse category spelling variants (spaces, punctuation, capitalization, close typos) into one All Categories option

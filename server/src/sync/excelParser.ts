@@ -124,11 +124,24 @@ function isBookingRow(row: Row): boolean {
 function resolveDayBlockIso(
   daySerial: number | null,
   arrivalDate: string,
+  nights: number,
 ): string | null {
   const md = excelSerialMonthDay(daySerial);
   if (!md) return null;
-  const year = arrivalDate.slice(0, 4);
-  return `${year}-${String(md.month).padStart(2, '0')}-${String(md.day).padStart(2, '0')}`;
+  const arrivalYear = Number(arrivalDate.slice(0, 4));
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const candidates = [arrivalYear - 1, arrivalYear, arrivalYear + 1].map(
+    (y) => `${y}-${pad(md.month)}-${pad(md.day)}`,
+  );
+  const departureDate = addDays(arrivalDate, nights);
+  const inStay = candidates.find((d) => d >= arrivalDate && d < departureDate);
+  if (inStay) return inStay;
+  // Nearest to arrival when the day header is outside the stay (layout quirk)
+  return candidates.sort(
+    (a, b) =>
+      Math.abs(Date.parse(`${a}T00:00:00Z`) - Date.parse(`${arrivalDate}T00:00:00Z`)) -
+      Math.abs(Date.parse(`${b}T00:00:00Z`) - Date.parse(`${arrivalDate}T00:00:00Z`)),
+  )[0];
 }
 
 function addToDayTypeMap(
@@ -149,12 +162,24 @@ function addToDayTypeMap(
   typeMap.set(type, existing);
 }
 
+/** Rooms occupied each night = sum of in-house booking room counts (not sheet day-block totals). */
+function buildDailyTypeMapFromStays(
+  bookings: Booking[],
+): Map<string, Map<string, { rooms: number; bookings: number }>> {
+  const dailyTypeMap = new Map<string, Map<string, { rooms: number; bookings: number }>>();
+  for (const b of bookings) {
+    for (let n = 0; n < b.nights; n++) {
+      addToDayTypeMap(dailyTypeMap, addDays(b.arrivalDate, n), b.finalRoom, b.noOfRooms);
+    }
+  }
+  return dailyTypeMap;
+}
+
 function parseMonthSheet(
   sheetName: string,
   rows: Row[],
   refCounters: Map<string, number>,
   syncedAt: string,
-  dailyTypeMap: Map<string, Map<string, { rooms: number; bookings: number }>>,
 ): { bookings: Booking[]; mismatches: SyncMismatch[] } {
   const bookings: Booking[] = [];
   const mismatches: SyncMismatch[] = [];
@@ -204,11 +229,8 @@ function parseMonthSheet(
 
     if (daySerial != null) {
       dayBlockSums.set(daySerial, (dayBlockSums.get(daySerial) ?? 0) + noOfRooms);
-      const blockIso = resolveDayBlockIso(daySerial, arrivalDate);
-      if (blockIso) {
-        dayBlockIsoBySerial.set(daySerial, blockIso);
-        addToDayTypeMap(dailyTypeMap, blockIso, cellString(row[3]), noOfRooms);
-      }
+      const blockIso = resolveDayBlockIso(daySerial, arrivalDate, nights);
+      if (blockIso) dayBlockIsoBySerial.set(daySerial, blockIso);
     }
 
     const arrivalMonth = monthFromArrival(arrivalDate);
@@ -326,7 +348,6 @@ function inferTotalRooms(workbook: XLSX.WorkBook): number {
 export function parseBookingWorkbook(workbook: XLSX.WorkBook): ParsedData {
   const syncedAt = new Date().toISOString();
   const refCounters = new Map<string, number>();
-  const dailyTypeMap = new Map<string, Map<string, { rooms: number; bookings: number }>>();
 
   const allBookings: Booking[] = [];
   const allMismatches: SyncMismatch[] = [];
@@ -341,21 +362,17 @@ export function parseBookingWorkbook(workbook: XLSX.WorkBook): ParsedData {
       defval: '',
     });
 
-    const { bookings, mismatches } = parseMonthSheet(
-      sheetName,
-      rows,
-      refCounters,
-      syncedAt,
-      dailyTypeMap,
-    );
+    const { bookings, mismatches } = parseMonthSheet(sheetName, rows, refCounters, syncedAt);
     allBookings.push(...bookings);
     allMismatches.push(...mismatches);
   }
 
   const uniqueBookings = dedupeBookings(allBookings);
+  const dailyTypeMap = buildDailyTypeMapFromStays(uniqueBookings);
   const sheet4Occupancy = parseSheet4(workbook);
-  const dayBlockOccupancy = buildOccupancyFromDayBlocks(dailyTypeMap);
-  const dailyOccupancy = mergeOccupancy(sheet4Occupancy, dayBlockOccupancy);
+  const stayOccupancy = buildOccupancyFromDayBlocks(dailyTypeMap);
+  // Prefer in-house stay totals over Sheet4 when both exist
+  const dailyOccupancy = mergeOccupancy(sheet4Occupancy, stayOccupancy);
   const dailyRoomsByType = buildDailyRoomsByType(dailyTypeMap);
   const totalRooms = inferTotalRooms(workbook);
 
