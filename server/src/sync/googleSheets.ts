@@ -14,8 +14,10 @@ export function getGoogleSheetsId(): string {
   return DEFAULT_GOOGLE_SHEETS_ID;
 }
 
-export function googleSheetsExportUrl(sheetId: string): string {
-  return `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=xlsx`;
+export function googleSheetsExportUrl(sheetId: string, cacheBust = true): string {
+  const base = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=xlsx`;
+  // Bust Google/CDN caches — without this, Vercel often keeps an older .xlsx after sheet edits.
+  return cacheBust ? `${base}&t=${Date.now()}&r=${Math.random().toString(36).slice(2)}` : base;
 }
 
 /**
@@ -26,8 +28,11 @@ export async function downloadGoogleSheetXlsx(sheetId = getGoogleSheetsId()): Pr
   const url = googleSheetsExportUrl(sheetId);
   const res = await fetch(url, {
     redirect: 'follow',
+    cache: 'no-store',
     headers: {
       Accept: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,*/*',
+      'Cache-Control': 'no-cache',
+      Pragma: 'no-cache',
     },
   });
 

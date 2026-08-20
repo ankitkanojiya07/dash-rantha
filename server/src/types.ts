@@ -57,6 +57,11 @@ export interface SyncLog {
   status: 'success' | 'warning' | 'error';
   /** Always Google Drive for this dashboard. */
   source: 'google';
+  /** Spreadsheet ID that was downloaded (helps catch env mismatches). */
+  sheetId?: string;
+  /** Raw .xlsx size / hash so stale CDN exports are visible. */
+  contentBytes?: number;
+  contentHash?: string;
 }
 
 export interface DashboardKPIs {

@@ -79,6 +79,8 @@ export function SyncHealthPage() {
             Last synced: {format(parseISO(syncLog.syncedAt), 'dd MMM yyyy, HH:mm')} (
             {formatDistanceToNow(parseISO(syncLog.syncedAt), { addSuffix: true })})
             {syncLog.source ? <> · Source: Google Drive (live link)</> : null}
+            {syncLog.sheetId ? <> · Sheet: {syncLog.sheetId.slice(0, 8)}…</> : null}
+            {syncLog.contentHash ? <> · File #{syncLog.contentHash}</> : null}
           </span>
           <button
             className="btn btn-primary btn-sm"

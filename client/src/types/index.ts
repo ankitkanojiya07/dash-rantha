@@ -45,6 +45,9 @@ export interface SyncLog {
   mismatches: SyncMismatch[];
   status: 'success' | 'warning' | 'error';
   source?: 'google';
+  sheetId?: string;
+  contentBytes?: number;
+  contentHash?: string;
 }
 
 export interface DashboardKPIs {

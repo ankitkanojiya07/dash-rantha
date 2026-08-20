@@ -3,6 +3,7 @@ import { getBookingStore, refreshBookingStore } from '../data/bookingStore.js';
 import type { Booking, BookingOverlap, DashboardKPIs } from '../types.js';
 import { countRoomsByType, withPrimaryRoomTypes } from '../utils/roomType.js';
 import { categoryMatchKey } from '../utils/categoryName.js';
+import { hotelTodayIso } from '../utils/hotelDate.js';
 import { getAgentEmail } from '../config/agentEmails.js';
 import { bookingsToCsv, sendBookingsCsvMail } from '../services/mailService.js';
 
@@ -20,7 +21,7 @@ function parseDate(s: string) {
 
 router.get('/dashboard/kpis', (_req, res) => {
   const { bookings, dailyOccupancy, syncLog, totalRooms } = getBookingStore();
-  const today = new Date().toISOString().split('T')[0];
+  const today = hotelTodayIso();
   const todayOcc = dailyOccupancy.find((o) => o.date === today);
   const occupancyToday = todayOcc
     ? Math.round((todayOcc.roomsOccupied / totalRooms) * 100)
@@ -136,14 +137,14 @@ function occupiedByTypeForDate(date: string) {
 
 router.get('/bookings/today', (_req, res) => {
   const { bookings } = getBookingStore();
-  const today = new Date().toISOString().split('T')[0];
+  const today = hotelTodayIso();
   const arrivals = bookings.filter((b) => b.arrivalDate === today);
   const departures = bookings.filter((b) => b.departureDate === today);
   res.json({ arrivals, departures, occupied: occupiedByTypeForDate(today) });
 });
 
 router.get('/bookings/occupied', (req, res) => {
-  const date = (req.query.date as string) || new Date().toISOString().split('T')[0];
+  const date = (req.query.date as string) || hotelTodayIso();
   res.json(occupiedByTypeForDate(date));
 });
 
@@ -428,6 +429,9 @@ router.post('/sync/refresh', async (_req, res, next) => {
       syncedAt: store.syncLog.syncedAt,
       source: store.syncLog.source,
       rowsProcessed: store.syncLog.rowsProcessed,
+      sheetId: store.syncLog.sheetId,
+      contentBytes: store.syncLog.contentBytes,
+      contentHash: store.syncLog.contentHash,
     });
   } catch (err) {
     next(err);

@@ -2,6 +2,9 @@
 
 - Always show the SGL segment in Rooms Booked alongside DBL and TPL, including when the count is 0
 - Prefer Rooms Booked day totals to match the spreadsheet’s day-block room counts rather than stay-range inference alone
+- Bookings occupancy search should support fewer-than thresholds of 30, 40, 60, 80, 100, and 140 rooms
+- Omit past years such as 2025 from the Bookings year filter
+- Collapse category spelling variants (spaces, punctuation, capitalization, close typos) into one All Categories option
 
 ## Learned Workspace Facts
 
@@ -10,3 +13,5 @@
 - Room types include DBL, SGL, and TPL; labels like SINGLE/SG should map to SGL
 - Spreadsheet arrival cells may be text dates (e.g. DD/MM/YYYY) as well as Excel serials; the parser must accept both
 - Departure dates are derived from arrival plus nights when sheet dates are unreliable
+- Google Sheets XLSX export can be CDN-cached; production sync must cache-bust the export URL and use `cache: 'no-store'` or live can diverge from local/Excel
+- Hotel calendar “today” uses Asia/Kolkata

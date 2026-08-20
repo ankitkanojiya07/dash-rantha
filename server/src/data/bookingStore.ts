@@ -1,3 +1,4 @@
+import { createHash } from 'crypto';
 import type { Agent, Booking, DailyOccupancy, DailyRoomsByType, SyncLog } from '../types.js';
 import { parseBookingExcelBuffer } from '../sync/excelParser.js';
 import { downloadGoogleSheetXlsx, getGoogleSheetsId } from '../sync/googleSheets.js';
@@ -50,7 +51,15 @@ export interface BookingStore {
 }
 
 let store: BookingStore | null = null;
+let storeLoadedAt = 0;
 let loadPromise: Promise<BookingStore> | null = null;
+
+/** How long a loaded snapshot is reused before re-downloading Google Sheets. */
+const STORE_TTL_MS = Number(process.env.BOOKING_STORE_TTL_MS || 2 * 60 * 1000);
+
+function storeIsFresh(): boolean {
+  return Boolean(store) && Date.now() - storeLoadedAt < STORE_TTL_MS;
+}
 
 function buildStore(parsed: {
   bookings: Booking[];
@@ -74,19 +83,22 @@ async function loadFromGoogle(): Promise<BookingStore> {
   const sheetId = getGoogleSheetsId();
   const buffer = await downloadGoogleSheetXlsx(sheetId);
   const parsed = parseBookingExcelBuffer(buffer);
+  parsed.syncLog.sheetId = sheetId;
+  parsed.syncLog.contentBytes = buffer.length;
+  parsed.syncLog.contentHash = createHash('sha256').update(buffer).digest('hex').slice(0, 16);
   const next = buildStore(parsed);
   console.log(
-    `Loaded ${next.bookings.length} bookings from Google Sheets (${sheetId}) — ${next.syncLog.sheetsProcessed} sheets, ${next.syncLog.mismatches.length} mismatches`,
+    `Loaded ${next.bookings.length} bookings from Google Sheets (${sheetId}, ${parsed.syncLog.contentBytes}b #${parsed.syncLog.contentHash}) — ${next.syncLog.sheetsProcessed} sheets, ${next.syncLog.mismatches.length} mismatches`,
   );
   return next;
 }
 
-export async function ensureBookingStore(): Promise<BookingStore> {
-  if (store) return store;
+async function loadAndCache(): Promise<BookingStore> {
   if (!loadPromise) {
     loadPromise = loadFromGoogle()
       .then((next) => {
         store = next;
+        storeLoadedAt = Date.now();
         return next;
       })
       .finally(() => {
@@ -94,6 +106,11 @@ export async function ensureBookingStore(): Promise<BookingStore> {
       });
   }
   return loadPromise;
+}
+
+export async function ensureBookingStore(): Promise<BookingStore> {
+  if (storeIsFresh()) return store!;
+  return loadAndCache();
 }
 
 /** Sync accessor — store must already be loaded via ensureBookingStore(). */
@@ -105,13 +122,8 @@ export function getBookingStore(): BookingStore {
 }
 
 export async function refreshBookingStore(): Promise<BookingStore> {
-  loadPromise = loadFromGoogle()
-    .then((next) => {
-      store = next;
-      return next;
-    })
-    .finally(() => {
-      loadPromise = null;
-    });
-  return loadPromise;
+  // Drop stale snapshot so concurrent ensureBookingStore waits on this reload.
+  store = null;
+  storeLoadedAt = 0;
+  return loadAndCache();
 }
