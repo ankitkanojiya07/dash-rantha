@@ -479,6 +479,20 @@ input, select {
     flex: 1 1 100%;
   }
 
+  .agent-filter {
+    min-width: 0;
+    flex: 1 1 100%;
+  }
+
+  .agent-filter-trigger {
+    min-width: 0;
+  }
+
+  .agent-filter-dropdown {
+    min-width: 0;
+    width: 100%;
+  }
+
   .health-grid {
     grid-template-columns: 1fr;
   }
@@ -1131,6 +1145,106 @@ input, select {
 
 .mail-field-full {
   grid-column: 1 / -1;
+}
+
+.agent-filter {
+  position: relative;
+  min-width: 12rem;
+}
+
+.agent-filter-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  min-width: 12rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.agent-filter-dropdown {
+  position: absolute;
+  z-index: 30;
+  left: 0;
+  right: 0;
+  top: calc(100% + 0.25rem);
+  min-width: 16rem;
+  max-height: 280px;
+  overflow: auto;
+  background: var(--bg-card, var(--bg-primary));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.date-filter-dropdown {
+  min-width: 18rem;
+  max-height: none;
+  overflow: visible;
+  gap: 0.65rem;
+}
+
+.date-filter-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.date-filter-tab {
+  border: 1px solid var(--border);
+  background: var(--bg-secondary);
+  color: var(--text-muted);
+  border-radius: var(--radius-sm);
+  padding: 0.35rem 0.65rem;
+  font-size: 0.75rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.date-filter-tab:hover {
+  color: var(--text-primary);
+  border-color: var(--accent);
+}
+
+.date-filter-tab.active {
+  background: var(--accent-muted);
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.date-filter-tab-clear {
+  margin-left: auto;
+  color: var(--text-muted);
+}
+
+.date-filter-tab-clear:hover {
+  color: var(--danger, #dc2626);
+  border-color: var(--danger, #dc2626);
+}
+
+.date-filter-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.date-filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.date-filter-field .filter-input {
+  min-width: 0;
+  width: 100%;
 }
 
 .guest-select {

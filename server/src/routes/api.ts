@@ -154,7 +154,18 @@ router.get('/bookings', (req, res) => {
 
   const { agent, month, year, category, from, to, search } = req.query;
 
-  if (agent) result = result.filter((b) => b.agentName === agent);
+  if (agent) {
+    const names = (Array.isArray(agent) ? agent : [agent])
+      .flatMap((v) => String(v).split('|'))
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (names.length === 1) {
+      result = result.filter((b) => b.agentName === names[0]);
+    } else if (names.length > 1) {
+      const set = new Set(names);
+      result = result.filter((b) => set.has(b.agentName));
+    }
+  }
   if (month) result = result.filter((b) => b.monthSheet === month);
   if (year) result = result.filter((b) => b.arrivalDate.startsWith(String(year)));
   if (category) {
